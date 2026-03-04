@@ -33,25 +33,34 @@ sub GetEffectPriority {
     my ( $effect ) = @_;
     $effect = '' unless( defined $effect );
     my %effectPriority = (
+        # =========================================================================================
+        # HIGH IMPACT
+        # =========================================================================================
         'transcript_ablation' => 1, # A feature ablation whereby the deleted region includes a transcript feature
         'exon_loss_variant' => 1, # A sequence variant whereby an exon is lost from the transcript
-        'sequence_feature + exon_loss_variant' =>1, # A 'NextProt' based annotation. Details are provided in the 'feature type' sub-field (ANN), or in the effect details (EFF).
-        'feature_ablation' =>1, # Deletion of a gene.
-        'chromosome_number_variation' =>1, # A kind of chromosome variation where the chromosome complement is not an exact multiple of the haploid number.
-        'bidirectional_gene_fusion' =>2, # Fusion of two genes in opposite directions.
-        'duplication' =>2, # Duplication affecting part of an exon.
-        'gene_fusion' =>2, # Fusion of two genes.
-        'inversion' =>2, # Inversion of an exon.
+        'sequence_feature + exon_loss_variant' => 1, # A 'NextProt' based annotation. Details are provided in the 'feature type' sub-field (ANN), or in the effect details (EFF).
+        'feature_ablation' => 1, # Deletion of a gene.
+        'chromosome_number_variation' => 1, # A kind of chromosome variation where the chromosome complement is not an exact multiple of the haploid number.
+        'bidirectional_gene_fusion' => 2, # Fusion of two genes in opposite directions.
+        'duplication' => 2, # Duplication affecting part of an exon.
+        'gene_fusion' => 2, # Fusion of two genes.
+        'inversion' => 2, # Inversion of an exon or a large chromosome segment.
         'splice_donor_variant' => 2, # A splice variant that changes the 2 base region at the 5' end of an intron
         'splice_acceptor_variant' => 2, # A splice variant that changes the 2 base region at the 3' end of an intron
         'stop_gained' => 3, # A sequence variant whereby at least one base of a codon is changed, resulting in a premature stop codon, leading to a shortened transcript
         'frameshift_variant' => 3, # A sequence variant which causes a disruption of the translational reading frame, because the number of nucleotides inserted or deleted is not a multiple of three
         'stop_lost' => 3, # A sequence variant where at least one base of the terminator codon (stop) is changed, resulting in an elongated transcript
-        'inversion' =>3, # Inversion of a large chromosome segment (over 1% or 1,000,000 bases).
-        'initiator_codon_variant+non_canonical_start_codon' =>4, # 
-        'rearranged_at_DNA_level' =>4, # Rearrangement affecting one or more genes.
+        'initiator_codon_variant+non_canonical_start_codon' => 4, # Variant causes start codon to be mutated into a non-canonical start codon.
+        'rearranged_at_DNA_level' => 4, # Rearrangement affecting one or more genes.
         'start_lost' => 4, # A codon variant that changes at least one base of the canonical start codon
         'initiator_codon_variant' => 4, # A codon variant that changes at least one base of the first codon of a transcript
+        'transcript_amplification' => 4, # A feature amplification of a region containing a transcript
+        'feature_elongation' => 4, # A sequence variant that causes the extension of a genomic feature, with regard to the reference sequence
+        'feature_truncation' => 4, # A sequence variant that causes the reduction of a genomic feature, with regard to the reference sequence
+
+        # =========================================================================================
+        # MODERATE IMPACT
+        # =========================================================================================
         'disruptive_inframe_insertion' => 5, # An inframe increase in cds length that inserts one or more codons into the coding sequence within an existing codon
         'disruptive_inframe_deletion' => 5, # An inframe decrease in cds length that deletes bases from the coding sequence starting within an existing codon
         'conservative_inframe_insertion' => 5, # An inframe increase in cds length that inserts one or more codons into the coding sequence between existing codons
@@ -62,13 +71,15 @@ sub GetEffectPriority {
         'missense_variant' => 6, # A sequence variant, that changes one or more bases, resulting in a different amino acid sequence but where the length is preserved
         'conservative_missense_variant' => 6, # A sequence variant whereby at least one base of a codon is changed resulting in a codon that encodes for a different but similar amino acid. These variants may or may not be deleterious
         'rare_amino_acid_variant' => 6, # A sequence variant whereby at least one base of a codon encoding a rare amino acid is changed, resulting in a different encoded amino acid
-        'transcript_amplification' => 7, # A feature amplification of a region containing a transcript
-        '5_prime_UTR_truncation + exon_loss_variant' =>7, # The variant deletes an exon which is in the 5'UTR of the transcript
-        'protein_altering_variant' =>7, # A sequence_variant which is predicted to change the protein encoded in the coding sequence.
-        'protein_protein_contact' =>8, # Protein-Protein interaction loci.
-        '3_prime_UTR_truncation + exon_loss' =>8, # The variant deletes an exon which is in the 3'UTR of the transcript
-        'structural_interaction_variant' =>8, # Within protein interaction loci (e.g. two AA that are in contact within the same protein, possibly helping structural conformation).
-        'splice_branch_variant' =>8, #
+
+        # =========================================================================================
+        # LOW IMPACT
+        # =========================================================================================
+        '5_prime_UTR_truncation + exon_loss_variant' => 8, # The variant deletes an exon which is in the 5'UTR of the transcript
+        'protein_protein_contact' => 8, # Protein-Protein interaction loci.
+        '3_prime_UTR_truncation + exon_loss' => 8, # The variant deletes an exon which is in the 3'UTR of the transcript
+        'structural_interaction_variant' => 8, # Within protein interaction loci (e.g. two AA that are in contact within the same protein, possibly helping structural conformation).
+        'splice_branch_variant' => 8, # A sequence variant that changes the splice branch site
         'splice_region_variant' => 8, # A sequence variant in which a change has occurred within the region of the splice site, either within 1-3 bases of the exon or 3-8 bases of the intron
         'splice_donor_5th_base_variant' => 8, # A sequence variant that causes a change at the 5th base pair after the start of the intron in the orientation of the transcript
         'splice_donor_region_variant' => 8, # A sequence variant that falls in the region between the 3rd and 6th base after splice junction (5' end of intron)
@@ -76,12 +87,16 @@ sub GetEffectPriority {
         'start_retained_variant' => 9, # A sequence variant where at least one base in the start codon is changed, but the start remains
         'stop_retained_variant' => 9, # A sequence variant where at least one base in the terminator codon is changed, but the terminator remains
         'synonymous_variant' => 9, # A sequence variant where there is no resulting change to the encoded amino acid
-        'start_retained' =>9, # Variant causes start codon to be mutated into another start codon. e.g.: Ttg/Ctg, L/L (TTG and CTG can be START codons)
+        'start_retained' => 9, # Variant causes start codon to be mutated into another start codon. e.g.: Ttg/Ctg, L/L (TTG and CTG can be START codons)
         'incomplete_terminal_codon_variant' => 10, # A sequence variant where at least one base of the final codon of an incompletely annotated transcript is changed
+
+        # =========================================================================================
+        # MODIFIER IMPACT
+        # =========================================================================================
         'coding_sequence_variant' => 11, # A sequence variant that changes the coding sequence
         'mature_miRNA_variant' => 11, # A transcript variant located with the sequence of the mature miRNA
         'exon_variant' => 11, # A sequence variant that changes exon sequence
-        'transcript_variant' =>11, # The variant hits a transcript.
+        'transcript_variant' => 11, # The variant hits a transcript.
         '5_prime_UTR_variant' => 12, # A UTR variant of the 5' UTR
         '5_prime_UTR_premature_start_codon_gain_variant' => 12, # snpEff-specific effect, creating a start codon in 5' UTR
         '3_prime_UTR_variant' => 12, # A UTR variant of the 3' UTR
@@ -93,7 +108,7 @@ sub GetEffectPriority {
         'intragenic_variant' => 14, # A variant that occurs within a gene but falls outside of all transcript features. This occurs when alternate transcripts of a gene do not share overlapping sequence
         'INTRAGENIC' => 14, # snpEff-specific synonym of intragenic_variant
         'NMD_transcript_variant' => 15, # A variant in a transcript that is the target of NMD
-        'coding_transcript_variant' =>15, # A transcript variant of a protein coding gene.
+        'coding_transcript_variant' => 15, # A transcript variant of a protein coding gene.
         'upstream_gene_variant' => 16, # A sequence variant located 5' of a gene
         'downstream_gene_variant' => 16, # A sequence variant located 3' of a gene
         'TFBS_ablation' => 17, # A feature ablation whereby the deleted region includes a transcription factor binding site
@@ -102,18 +117,16 @@ sub GetEffectPriority {
         'regulatory_region_ablation' => 17, # A feature ablation whereby the deleted region includes a regulatory region
         'regulatory_region_amplification' => 17, # A feature amplification of a region containing a regulatory region
         'regulatory_region_variant' => 17, # A sequence variant located within a regulatory region
-        'regulatory_region' =>17, # snpEff-specific effect that should really be regulatory_region_variant
-        'mature_miRNA_variant' =>17, # 
-        'miRNA' =>17, # Variant affects an miRNA
-        'feature_elongation' => 18, # A sequence variant that causes the extension of a genomic feature, with regard to the reference sequence
-        'feature_truncation' => 18, # A sequence variant that causes the reduction of a genomic feature, with regard to the reference sequence
+        'regulatory_region' => 17, # snpEff-specific effect that should really be regulatory_region_variant
+        'miRNA' => 17, # Variant affects an miRNA
         'intergenic_variant' => 19, # A sequence variant located in the intergenic region, between genes
         'intergenic_region' => 19, # snpEff-specific effect that should really be intergenic_variant
-        'sequence_feature' =>19, # Any extent of continuous biological sequence.
-        'conserved_intron_variant' =>19, # The variant is in a highly conserved intronic region
-        'conserved_intergenic_variant' =>20, # The variant is in a highly conserved intergenic region 
-        'gene_variant' =>19, # The variant hits a gene.
-        'custom' =>20,
+        'sequence_feature' => 19, # Any extent of continuous biological sequence.
+        'conserved_intron_variant' => 19, # The variant is in a highly conserved intronic region
+        'conserved_intergenic_variant' => 20, # The variant is in a highly conserved intergenic region
+        'gene_variant' => 19, # The variant hits a gene.
+        'sequence_variant' => 20, # A sequence_variant is a non exact copy of a sequence_feature or genome exhibiting one or more sequence_alteration
+        'custom' => 20,
         '' => 20,
     );
     unless( defined $effectPriority{$effect} ) {
@@ -567,7 +580,7 @@ if ($retain_ann) {
     my @extra_ann = split(',',$retain_ann);
     for my $ann (@extra_ann) {
         # make sure not to add duplicates to @ann_cols
-        if ( !($ann ~~ @ann_cols) ) {
+        if ( !grep { $_ eq $ann } @ann_cols ) {
             push @ann_cols, $ann;
         }
     }
@@ -576,8 +589,10 @@ if ($retain_ann) {
 my @ann_cols_format; # To store the actual order of VEP data, that may differ between runs
 push( @maf_header, @ann_cols );
 
-# Add original VCF POS column header
+# Add original VCF POS, REF, ALT columns header
 push( @maf_header, "vcf_pos" );
+push( @maf_header, "vcf_ref" );
+push( @maf_header, "vcf_alt" );
 
 # If the user has INFO fields they want to retain, create additional columns for those
 my @addl_info_cols = ();
@@ -729,7 +744,7 @@ while( my $line = $annotated_vcf_fh->getline ) {
     my $start = my $stop = my $var_type = my $inframe = "";
     my ( $ref_length, $var_length ) = ( length( $ref ), length( $var ));
     # Backup the VCF-style position and REF/ALT alleles, so we can use it later
-    my ( $vcf_pos, $vcf_ref, $vcf_var ) = ( $pos, $ref, $var );
+    my ( $vcf_pos, $vcf_ref, $vcf_alt ) = ( $pos, $ref, $alt );
     # Remove any prefixed reference bps from all alleles, using "-" for simple indels
     while( $ref and $var and substr( $ref, 0, 1 ) eq substr( $var, 0, 1 ) and $ref ne $var ) {
         ( $ref, $var, @alleles ) = map{$_ = substr( $_, 1 ); ( $_ ? $_ : "-" )} ( $ref, $var, @alleles );
@@ -957,8 +972,10 @@ while( my $line = $annotated_vcf_fh->getline ) {
     $maf_line{vcf_id} = $var_id;
     $maf_line{vcf_qual} = $var_qual;
 
-    # Add original VCF POS column
+    # Add original VCF POS, REF, ALT columns
     $maf_line{vcf_pos} = $vcf_pos;
+    $maf_line{vcf_ref} = $vcf_ref;
+    $maf_line{vcf_alt} = $vcf_alt;
 
     # If there are additional INFO data to add, then add those
     foreach my $info_col ( @addl_info_cols ) {
@@ -1041,8 +1058,8 @@ sub GetVariantClassification {
     return "In_Frame_Del" if( $effect =~ /inframe_deletion$/ or ( $effect eq 'protein_altering_variant' and $inframe and $var_type eq 'DEL' ));
     return "Missense_Mutation" if( $effect =~ /^(missense_variant|coding_sequence_variant|conservative_missense_variant|rare_amino_acid_variant)$/ );
     return "Intron" if ( $effect =~ /^(transcript_amplification|intron_variant|INTRAGENIC|intragenic_variant)$/ );
-    return "Splice_Region" if( $effect eq 'splice_region_variant' );
-    return "Silent" if( $effect =~ /^(incomplete_terminal_codon_variant|synonymous_variant|stop_retained_variant|NMD_transcript_variant)$/ );
+    return "Splice_Region" if( $effect =~ /^(splice_region_variant|splice_donor_5th_base_variant|splice_donor_region_variant|splice_polypyrimidine_tract_variant)$/ );
+    return "Silent" if( $effect =~ /^(incomplete_terminal_codon_variant|synonymous_variant|stop_retained_variant|start_retained_variant|NMD_transcript_variant)$/ );
     return "RNA" if( $effect =~ /^(mature_miRNA_variant|exon_variant|non_coding_exon_variant|non_coding_transcript_exon_variant|non_coding_transcript_variant|nc_transcript_variant)$/ );
     return "5'UTR" if( $effect =~ /^(5_prime_UTR_variant|5_prime_UTR_premature_start_codon_gain_variant)$/ );
     return "3'UTR" if( $effect eq '3_prime_UTR_variant' );
@@ -1051,8 +1068,8 @@ sub GetVariantClassification {
     return "3'Flank" if ( $effect eq 'downstream_gene_variant' );
 
     # Annotate everything else simply as a targeted region
-    # TFBS_ablation, TFBS_amplification,regulatory_region_ablation, regulatory_region_amplification,
-    # feature_elongation, feature_truncation
+    # TFBS_ablation, TFBS_amplification, regulatory_region_ablation, regulatory_region_amplification,
+    # feature_elongation, feature_truncation, coding_transcript_variant, sequence_variant
     return "Targeted_Region";
 }
 
@@ -1371,10 +1388,10 @@ For example, below we have Short_name of I<MY_Ann> and VCF_fields of I<AD,TOPMED
 
 =over 2
 
-**NOTE**: This currently has only been tested with the AlphaMissense plugin. 
+**NOTE**: This currently has only been tested with the AlphaMissense plugin.
 Other plugins, particularly custom plugins, may not be compatible.
 
-VEP's plugins are described at: 
+VEP's plugins are described at:
 
 L<https://useast.ensembl.org/info/docs/tools/vep/script/vep_plugins.html>
 
@@ -1384,14 +1401,14 @@ For example, to use the VEP AlphaMissense plugin:
 
 L<https://github.com/Ensembl/VEP_plugins/blob/main/AlphaMissense.pm>
 
-After retrieving and tabix indexing the AlphaMissense database as described in the plugin README, 
-we can include these parameters and values in the vcf2maf command. Please note, you'll need to 
-specify the names of the annotations from the plugin that you would like to retain 
-with B<--retain-ann> to ensure they are included in the output MAF. 
+After retrieving and tabix indexing the AlphaMissense database as described in the plugin README,
+we can include these parameters and values in the vcf2maf command. Please note, you'll need to
+specify the names of the annotations from the plugin that you would like to retain
+with B<--retain-ann> to ensure they are included in the output MAF.
 
 =over 8
 
---vep-plugins AlphaMissense,file=/path/to/AlphaMissense_{build}.tsv.gz 
+--vep-plugins AlphaMissense,file=/path/to/AlphaMissense_{build}.tsv.gz
 
 --retain-ann am_pathogenicity,am_class
 
