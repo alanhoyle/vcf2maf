@@ -10,5 +10,7 @@ tests/*.new.maf
 tests/*.new.vcf
 tests/*.vep.vcf
 tests/*.pairs.tsv
-*.fa
-*.fai
+tests/*.fa
+tests/*.fa.fai
+tests/*.fasta
+tests/*.fasta.fai
