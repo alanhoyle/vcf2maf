@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vcf2maf"
+version = "1.0.0"
+description = "Python port of mskcc/vcf2maf – convert VCF to MAF with Ensembl VEP annotation"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.8"
+# No non-stdlib dependencies; VEP and samtools/bcftools are external tools.
+
+[project.scripts]
+vcf2maf  = "vcf2maf.vcf2maf:main"
+maf2vcf  = "vcf2maf.maf2vcf:main"
+maf2maf  = "vcf2maf.maf2maf:main"
+vcf2vcf  = "vcf2maf.vcf2vcf:main"
