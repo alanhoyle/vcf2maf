@@ -47,6 +47,18 @@ COPY pyproject.toml README.md /tmp/vcf2maf/
 COPY vcf2maf/ /tmp/vcf2maf/vcf2maf/
 RUN /usr/local/bin/pip install --no-build-isolation /tmp/vcf2maf/
 
+# Drop caches and docs that are not needed at runtime. VEP and its conda
+# dependencies are large, so this only trims the easy fat.
+RUN conda clean -a -y && \
+    find /usr/local -type d -name '__pycache__' -prune -exec rm -rf '{}' + && \
+    find /usr/local -type f \( -name '*.pyc' -o -name '*.pyo' -o -name '*.a' \) -delete && \
+    rm -rf /usr/local/share/man \
+           /usr/local/share/doc \
+           /usr/local/share/info \
+           /usr/local/share/bash-completion \
+           /usr/local/lib/python*/test \
+           /usr/local/lib/python*/idlelib
+
 # Deploy the minimal OS and tools into a clean target layer
 FROM scratch
 

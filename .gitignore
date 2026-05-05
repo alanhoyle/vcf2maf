@@ -14,3 +14,5 @@ tests/*.fa
 tests/*.fa.fai
 tests/*.fasta
 tests/*.fasta.fai
+tests/homo_sapiens/
+tests/homo_sapiens_vep_*_GRCh38_chr21.tar.gz
