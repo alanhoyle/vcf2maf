@@ -34,51 +34,64 @@ log = logging.getLogger("maf2maf")
 # Argument parsing
 # ---------------------------------------------------------------------------
 
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="Re-annotate a MAF via maf2vcf + vcf2maf.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    p.add_argument("--input-maf",  required=True)
+    p.add_argument("--config", default="",
+                   help="Config file to load defaults from (default: ~/.vcf2maf.cfg)")
+    p.add_argument("--input-maf", required=True)
     p.add_argument("--output-maf", required=True)
 
     # Pass-through to maf2vcf
-    p.add_argument("--ref-fasta",
-                   default=os.path.expanduser(
-                       "~/.vep/homo_sapiens/112_GRCh37/Homo_sapiens.GRCh37.dna.toplevel.fa.gz"))
-    p.add_argument("--tumor-depth-col",  default="t_depth")
-    p.add_argument("--tumor-vad-col",    default="t_alt_count")
+    p.add_argument(
+        "--ref-fasta",
+        default=os.path.expanduser(
+            "~/.vep/homo_sapiens/112_GRCh38/"
+            "Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"
+        ),
+    )
+    p.add_argument("--tumor-depth-col", default="t_depth")
+    p.add_argument("--tumor-vad-col", default="t_alt_count")
     p.add_argument("--normal-depth-col", default="n_depth")
-    p.add_argument("--normal-vad-col",   default="n_alt_count")
-    p.add_argument("--samtools",  default="samtools")
+    p.add_argument("--normal-vad-col", default="n_alt_count")
+    p.add_argument("--samtools", default="samtools")
 
     # Pass-through to vcf2maf
-    p.add_argument("--vep-path",  default=os.path.expanduser("~/miniconda3/bin"))
-    p.add_argument("--vep-data",  default=os.path.expanduser("~/.vep"))
+    p.add_argument("--vep-path", default=os.path.expanduser("~/miniconda3/bin"))
+    p.add_argument("--vep-data", default=os.path.expanduser("~/.vep"))
     p.add_argument("--vep-forks", type=int, default=4)
     p.add_argument("--buffer-size", type=int, default=5000)
     p.add_argument("--cache-version", default="")
-    p.add_argument("--vep-custom",  default="")
-    p.add_argument("--vep-config",  default="")
+    p.add_argument("--vep-custom", default="")
+    p.add_argument("--vep-config", default="")
     p.add_argument("--vep-plugins", default="")
     p.add_argument("--vep-overwrite", action="store_true")
-    p.add_argument("--vep-stats",  default="",
-                   help="Path for VEP summary stats file (HTML). "
-                        "Omit or leave empty to suppress stats output (--no_stats).")
-    p.add_argument("--inhibit-vep",   action="store_true")
-    p.add_argument("--ncbi-build",    default="GRCh37")
-    p.add_argument("--species",       default="homo_sapiens")
-    p.add_argument("--maf-center",    default=".")
-    p.add_argument("--min-hom-vaf",   type=float, default=0.7)
+    p.add_argument(
+        "--vep-stats",
+        default="",
+        help="Path for VEP summary stats file (HTML). "
+        "Omit or leave empty to suppress stats output (--no_stats).",
+    )
+    p.add_argument("--inhibit-vep", action="store_true")
+    p.add_argument("--ncbi-build", default="GRCh38")
+    p.add_argument("--species", default="homo_sapiens")
+    p.add_argument("--maf-center", default=".")
+    p.add_argument("--min-hom-vaf", type=float, default=0.7)
     p.add_argument("--max-subpop-af", type=float, default=0.0004)
-    p.add_argument("--custom-enst",   default="")
-    p.add_argument("--retain-info",   default="")
-    p.add_argument("--retain-fmt",    default="")
-    p.add_argument("--retain-ann",    default="")
-    p.add_argument("--retain-cols",   default="",
-                   help="Comma-separated list of columns from the input MAF to carry over "
-                        "unchanged into the output MAF")
-    p.add_argument("--remap-chain",   default="")
+    p.add_argument("--custom-enst", default="")
+    p.add_argument("--retain-info", default="")
+    p.add_argument("--retain-fmt", default="")
+    p.add_argument("--retain-ann", default="")
+    p.add_argument(
+        "--retain-cols",
+        default="",
+        help="Comma-separated list of columns from the input MAF to carry over "
+        "unchanged into the output MAF",
+    )
+    p.add_argument("--remap-chain", default="")
     p.add_argument("--liftover-exec", default="liftOver")
     p.add_argument("--verbose", action="store_true")
     return p
@@ -87,6 +100,7 @@ def build_parser() -> argparse.ArgumentParser:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def maf2maf(args: argparse.Namespace) -> None:
     if not os.path.isfile(args.input_maf):
@@ -101,17 +115,17 @@ def maf2maf(args: argparse.Namespace) -> None:
         # ------------------------------------------------------------------
         vcf_dir = os.path.join(tmp_dir, "vcfs")
         m2v_args = argparse.Namespace(
-            input_maf     = args.input_maf,
-            output_dir    = vcf_dir,
-            ref_fasta     = args.ref_fasta,
-            per_tn_vcfs   = True,
-            tumor_depth_col  = args.tumor_depth_col,
-            tumor_vad_col    = args.tumor_vad_col,
-            normal_depth_col = args.normal_depth_col,
-            normal_vad_col   = args.normal_vad_col,
-            samtools      = args.samtools,
-            ncbi_build    = args.ncbi_build,
-            verbose       = args.verbose,
+            input_maf=args.input_maf,
+            output_dir=vcf_dir,
+            ref_fasta=args.ref_fasta,
+            per_tn_vcfs=True,
+            tumor_depth_col=args.tumor_depth_col,
+            tumor_vad_col=args.tumor_vad_col,
+            normal_depth_col=args.normal_depth_col,
+            normal_vad_col=args.normal_vad_col,
+            samtools=args.samtools,
+            ncbi_build=args.ncbi_build,
+            verbose=args.verbose,
         )
         vcf_paths = m2v.maf2vcf(m2v_args)
 
@@ -126,44 +140,44 @@ def maf2maf(args: argparse.Namespace) -> None:
             # Derive tumor/normal IDs from VCF filename: TUMOR_vs_NORMAL.vcf
             base = os.path.basename(vcf_path).replace(".vcf", "")
             parts = base.split("_vs_")
-            tumor_id  = parts[0] if parts else "TUMOR"
+            tumor_id = parts[0] if parts else "TUMOR"
             normal_id = parts[1] if len(parts) > 1 else "NORMAL"
 
             part_maf = vcf_path.replace(".vcf", ".maf")
 
             v2m_args = argparse.Namespace(
-                input_vcf       = vcf_path,
-                output_maf      = part_maf,
-                tumor_id        = tumor_id,
-                normal_id       = normal_id,
-                vcf_tumor_id    = tumor_id,
-                vcf_normal_id   = normal_id,
-                vep_path        = args.vep_path,
-                vep_data        = args.vep_data,
-                vep_forks       = args.vep_forks,
-                buffer_size     = args.buffer_size,
-                cache_version   = args.cache_version,
-                vep_custom      = args.vep_custom,
-                vep_config      = args.vep_config,
-                vep_plugins     = args.vep_plugins,
-                vep_overwrite   = args.vep_overwrite,
-                vep_stats       = args.vep_stats,
-                ref_fasta       = args.ref_fasta,
-                species         = args.species,
-                ncbi_build      = args.ncbi_build,
-                maf_center      = args.maf_center,
-                min_hom_vaf     = args.min_hom_vaf,
-                max_subpop_af   = args.max_subpop_af,
-                retain_info     = args.retain_info,
-                retain_fmt      = args.retain_fmt,
-                retain_ann      = args.retain_ann,
-                custom_enst     = args.custom_enst,
-                remap_chain     = args.remap_chain,
-                liftover_exec   = args.liftover_exec,
-                inhibit_vep     = args.inhibit_vep,
-                any_allele      = False,
-                online          = False,
-                verbose         = args.verbose,
+                input_vcf=vcf_path,
+                output_maf=part_maf,
+                tumor_id=tumor_id,
+                normal_id=normal_id,
+                vcf_tumor_id=tumor_id,
+                vcf_normal_id=normal_id,
+                vep_path=args.vep_path,
+                vep_data=args.vep_data,
+                vep_forks=args.vep_forks,
+                buffer_size=args.buffer_size,
+                cache_version=args.cache_version,
+                vep_custom=args.vep_custom,
+                vep_config=args.vep_config,
+                vep_plugins=args.vep_plugins,
+                vep_overwrite=args.vep_overwrite,
+                vep_stats=args.vep_stats,
+                ref_fasta=args.ref_fasta,
+                species=args.species,
+                ncbi_build=args.ncbi_build,
+                maf_center=args.maf_center,
+                min_hom_vaf=args.min_hom_vaf,
+                max_subpop_af=args.max_subpop_af,
+                retain_info=args.retain_info,
+                retain_fmt=args.retain_fmt,
+                retain_ann=args.retain_ann,
+                custom_enst=args.custom_enst,
+                remap_chain=args.remap_chain,
+                liftover_exec=args.liftover_exec,
+                inhibit_vep=args.inhibit_vep,
+                any_allele=False,
+                online=False,
+                verbose=args.verbose,
             )
             v2m.vcf2maf(v2m_args)
             maf_parts.append(part_maf)
@@ -178,8 +192,9 @@ def maf2maf(args: argparse.Namespace) -> None:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
-def _merge_mafs(maf_parts: List[str], output_maf: str,
-                retain_cols: str, original_maf: str) -> None:
+def _merge_mafs(
+    maf_parts: List[str], output_maf: str, retain_cols: str, original_maf: str
+) -> None:
     """
     Concatenate per-TN MAFs, writing the header only once.
     Optionally carry over user-specified columns from the original MAF
@@ -199,12 +214,13 @@ def _merge_mafs(maf_parts: List[str], output_maf: str,
                         continue
                     parts = raw.rstrip("\n\r").split("\t")
                     chrom = _get(parts, orig_col_idx, "chromosome")
-                    pos   = _get(parts, orig_col_idx, "start_position")
-                    ref   = _get(parts, orig_col_idx, "reference_allele")
-                    tsb   = _get(parts, orig_col_idx, "tumor_sample_barcode")
-                    key   = (chrom, pos, ref, tsb)
-                    orig_lookup[key] = {c: _get(parts, orig_col_idx, c.lower())
-                                        for c in retain}
+                    pos = _get(parts, orig_col_idx, "start_position")
+                    ref = _get(parts, orig_col_idx, "reference_allele")
+                    tsb = _get(parts, orig_col_idx, "tumor_sample_barcode")
+                    key = (chrom, pos, ref, tsb)
+                    orig_lookup[key] = {
+                        c: _get(parts, orig_col_idx, c.lower()) for c in retain
+                    }
         except Exception as exc:
             log.warning("Could not load retain columns from original MAF: %s", exc)
 
@@ -244,10 +260,10 @@ def _merge_mafs(maf_parts: List[str], output_maf: str,
                     if retain and orig_lookup:
                         col_map = {c.lower(): i for i, c in enumerate(out_col_names)}
                         chrom = _get_by_map(row_parts, col_map, "chromosome")
-                        pos   = _get_by_map(row_parts, col_map, "start_position")
-                        ref   = _get_by_map(row_parts, col_map, "reference_allele")
-                        tsb   = _get_by_map(row_parts, col_map, "tumor_sample_barcode")
-                        key   = (chrom, pos, ref, tsb)
+                        pos = _get_by_map(row_parts, col_map, "start_position")
+                        ref = _get_by_map(row_parts, col_map, "reference_allele")
+                        tsb = _get_by_map(row_parts, col_map, "tumor_sample_barcode")
+                        key = (chrom, pos, ref, tsb)
                         extra = orig_lookup.get(key, {})
                         for rc in retain:
                             rc_idx = col_map.get(rc.lower())
@@ -275,14 +291,27 @@ def _get_by_map(parts: list, idx: dict, key: str) -> str:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
         datefmt="%H:%M:%S",
     )
+    try:
+        from .config import load_config
+    except ImportError:
+        from config import load_config  # type: ignore[no-redef]
+
+    pre = argparse.ArgumentParser(add_help=False)
+    pre.add_argument("--config", default="")
+    pre_args, _ = pre.parse_known_args()
+
     parser = build_parser()
-    args   = parser.parse_args()
+    cfg = load_config(pre_args.config or None)
+    if cfg:
+        parser.set_defaults(**cfg)
+    args = parser.parse_args()
     maf2maf(args)
 
 

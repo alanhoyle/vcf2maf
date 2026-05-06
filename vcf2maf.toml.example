@@ -1,0 +1,25 @@
+# vcf2maf configuration file
+# Copy to ~/.vcf2maf.toml and edit to match your installation.
+# All values are optional; the built-in defaults are shown below.
+# Keys use underscores (matching argparse dest names).
+
+[defaults]
+# Reference FASTA and genome build used when --ref-fasta / --ncbi-build are omitted.
+ref_fasta     = "~/.vep/homo_sapiens/112_GRCh38/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"
+ncbi_build    = "GRCh38"
+
+# GRCh37 alternative:
+# ref_fasta  = "~/.vep/homo_sapiens/112_GRCh37/Homo_sapiens.GRCh37.dna.toplevel.fa.gz"
+# ncbi_build = "GRCh37"
+
+# VEP installation
+vep_path      = "~/miniconda3/bin"
+vep_data      = "~/.vep"
+vep_forks     = 4
+buffer_size   = 5000
+species       = "homo_sapiens"
+
+# External tool paths (names or full paths)
+samtools      = "samtools"
+bcftools      = "bcftools"
+liftover_exec = "liftOver"

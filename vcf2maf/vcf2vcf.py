@@ -27,27 +27,38 @@ log = logging.getLogger("vcf2vcf")
 # Argument parsing
 # ---------------------------------------------------------------------------
 
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="Normalise and clean a VCF prior to vcf2maf annotation.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    p.add_argument("--input-vcf",   required=True)
-    p.add_argument("--output-vcf",  required=True)
-    p.add_argument("--vcf-tumor-id",  default="TUMOR")
+    p.add_argument("--config", default="",
+                   help="Config file to load defaults from (default: ~/.vcf2maf.cfg)")
+    p.add_argument("--input-vcf", required=True)
+    p.add_argument("--output-vcf", required=True)
+    p.add_argument("--vcf-tumor-id", default="TUMOR")
     p.add_argument("--vcf-normal-id", default="NORMAL")
-    p.add_argument("--ref-fasta",
-                   default=os.path.expanduser(
-                       "~/.vep/homo_sapiens/112_GRCh37/Homo_sapiens.GRCh37.dna.toplevel.fa.gz"))
-    p.add_argument("--samtools",  default="samtools")
-    p.add_argument("--bcftools",  default="bcftools")
-    p.add_argument("--remap-chain",   default="",
-                   help="UCSC liftOver chain file for remapping")
+    p.add_argument(
+        "--ref-fasta",
+        default=os.path.expanduser(
+            "~/.vep/homo_sapiens/112_GRCh38/"
+            "Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"
+        ),
+    )
+    p.add_argument("--samtools", default="samtools")
+    p.add_argument("--bcftools", default="bcftools")
+    p.add_argument(
+        "--remap-chain", default="", help="UCSC liftOver chain file for remapping"
+    )
     p.add_argument("--liftover-exec", default="liftOver")
-    p.add_argument("--add-filters",   action="store_true",
-                   help="Add FILTER annotations for known issues")
-    p.add_argument("--ncbi-build",    default="GRCh37")
-    p.add_argument("--verbose",       action="store_true")
+    p.add_argument(
+        "--add-filters",
+        action="store_true",
+        help="Add FILTER annotations for known issues",
+    )
+    p.add_argument("--ncbi-build", default="GRCh38")
+    p.add_argument("--verbose", action="store_true")
     return p
 
 
@@ -55,13 +66,14 @@ def build_parser() -> argparse.ArgumentParser:
 # Liftover helpers
 # ---------------------------------------------------------------------------
 
-def remap_vcf(input_vcf: str, chain: str, liftover_exec: str,
-              tmp_dir: str) -> str:
+
+def remap_vcf(input_vcf: str, chain: str, liftover_exec: str, tmp_dir: str) -> Dict[str, str]:
     """
-    Run UCSC liftOver on the variant loci and return the path to a
-    remapped VCF.
+    Run UCSC liftOver on the variant loci and return a mapping of
+    original 'chrom:pos' keys to remapped 'chrom:pos' values.
+    Exits with an error if liftOver cannot be found or fails to run.
     """
-    bed_path    = os.path.join(tmp_dir, "input.bed")
+    bed_path = os.path.join(tmp_dir, "input.bed")
     mapped_path = os.path.join(tmp_dir, "mapped.bed")
     unmapped_path = os.path.join(tmp_dir, "unmapped.bed")
     remap: Dict[str, str] = {}
@@ -76,10 +88,33 @@ def remap_vcf(input_vcf: str, chain: str, liftover_exec: str,
             bed_fh.write(f"{chrom}\t{pos-1}\t{pos}\t{chrom}:{pos}\n")
 
     # Run liftOver
-    result = subprocess.run(
-        [liftover_exec, bed_path, chain, mapped_path, unmapped_path],
-        capture_output=True
-    )
+    try:
+        result = subprocess.run(
+            [liftover_exec, bed_path, chain, mapped_path, unmapped_path],
+            capture_output=True,
+        )
+    except FileNotFoundError:
+        sys.exit(f"ERROR: liftOver executable not found: {liftover_exec!r}")
+    except OSError as exc:
+        sys.exit(f"ERROR: Failed to launch liftOver: {exc}")
+
+    if result.returncode != 0:
+        stderr = result.stderr.decode(errors="replace").strip()
+        sys.exit(
+            f"ERROR: liftOver exited with status {result.returncode}"
+            + (f": {stderr}" if stderr else "")
+        )
+
+    # Warn about unmapped loci
+    if os.path.isfile(unmapped_path):
+        unmapped_count = sum(
+            1 for ln in open(unmapped_path) if not ln.startswith("#") and ln.strip()
+        )
+        if unmapped_count:
+            log.warning(
+                "%d locus/loci could not be remapped by liftOver and will be dropped",
+                unmapped_count,
+            )
 
     # Parse mapped loci
     if os.path.isfile(mapped_path):
@@ -99,6 +134,7 @@ def remap_vcf(input_vcf: str, chain: str, liftover_exec: str,
 # ---------------------------------------------------------------------------
 # Multiallelic splitting
 # ---------------------------------------------------------------------------
+
 
 def split_multiallelic(line: str) -> List[str]:
     """
@@ -148,8 +184,10 @@ def split_multiallelic(line: str) -> List[str]:
 # Left-alignment
 # ---------------------------------------------------------------------------
 
-def left_align_variant(chrom: str, pos: int, ref: str, alt: str,
-                        ref_fasta: str, samtools: str) -> Tuple[int, str, str]:
+
+def left_align_variant(
+    chrom: str, pos: int, ref: str, alt: str, ref_fasta: str, samtools: str
+) -> Tuple[int, str, str]:
     """
     Left-align an indel by shifting as far left as possible.
     For substitutions, returns input unchanged.
@@ -169,7 +207,9 @@ def left_align_variant(chrom: str, pos: int, ref: str, alt: str,
         try:
             result = subprocess.run(
                 [samtools, "faidx", ref_fasta, region],
-                capture_output=True, text=True, check=True
+                capture_output=True,
+                text=True,
+                check=True,
             )
             lines = result.stdout.strip().split("\n")
             prev_base = lines[1].strip().upper() if len(lines) >= 2 else ""
@@ -198,6 +238,7 @@ def left_align_variant(chrom: str, pos: int, ref: str, alt: str,
 # Main normalisation
 # ---------------------------------------------------------------------------
 
+
 def vcf2vcf(args: argparse.Namespace) -> None:
     if not os.path.isfile(args.input_vcf):
         sys.exit(f"ERROR: --input-vcf not found: {args.input_vcf}")
@@ -211,8 +252,7 @@ def vcf2vcf(args: argparse.Namespace) -> None:
         if not os.path.isfile(args.remap_chain):
             sys.exit(f"ERROR: --remap-chain not found: {args.remap_chain}")
         log.info("Running liftOver coordinate remapping…")
-        remap = remap_vcf(args.input_vcf, args.remap_chain,
-                          args.liftover_exec, tmp_dir)
+        remap = remap_vcf(args.input_vcf, args.remap_chain, args.liftover_exec, tmp_dir)
 
     # Determine tumor / normal column indices from header
     tum_col_idx = -1
@@ -221,6 +261,13 @@ def vcf2vcf(args: argparse.Namespace) -> None:
 
     header_lines: List[str] = []
 
+    def format_header_sort_key(line: str) -> Tuple[int, int, str]:
+        if not line.startswith("##FORMAT="):
+            return (0, 0, line)
+        match = re.search(r"ID=([^,>]+)", line)
+        order = {"AD": 0, "DP": 1, "GT": 2}
+        return (1, order.get(match.group(1) if match else "", 99), line)
+
     with open(args.input_vcf) as in_fh, open(args.output_vcf, "w") as out_fh:
         for raw_line in in_fh:
             line = raw_line.rstrip("\n\r")
@@ -228,16 +275,17 @@ def vcf2vcf(args: argparse.Namespace) -> None:
             # Pass-through meta-information lines, filtering deprecated ones
             if line.startswith("##"):
                 # Remove INFO/SVTYPE when ALT is not symbolic (causes VEP to skip)
-                if re.match(r'^##INFO=<ID=SVTYPE', line):
+                if re.match(r"^##INFO=<ID=SVTYPE", line):
                     continue
                 if args.remap_chain and line.startswith("##contig="):
                     continue
                 header_lines.append(line)
-                out_fh.write(line + "\n")
                 continue
 
             # Column header line
             if line.startswith("#CHROM"):
+                for header_line in sorted(header_lines, key=format_header_sort_key):
+                    out_fh.write(header_line + "\n")
                 fields = line.lstrip("#").split("\t")
                 sample_cols = fields[9:]
 
@@ -261,7 +309,8 @@ def vcf2vcf(args: argparse.Namespace) -> None:
                 new_header_samples = [sample_cols[i] for i in sample_order]
                 out_fh.write(
                     "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t"
-                    + "\t".join(new_header_samples) + "\n"
+                    + "\t".join(new_header_samples)
+                    + "\n"
                 )
                 continue
 
@@ -271,7 +320,7 @@ def vcf2vcf(args: argparse.Namespace) -> None:
                 continue
 
             chrom, pos_str, vid, ref, alt_field, qual, filt, info = cols[:8]
-            fmt_str     = cols[8] if len(cols) > 8 else "GT"
+            fmt_str = cols[8] if len(cols) > 8 else "GT"
             sample_data = cols[9:] if len(cols) > 9 else []
 
             # Apply liftover remapping if applicable
@@ -285,17 +334,19 @@ def vcf2vcf(args: argparse.Namespace) -> None:
 
             # Remove INFO/SVTYPE if ALT is defined (not symbolic)
             if not alt_field.startswith("<"):
-                info = re.sub(r';?SVTYPE=[^;]+', '', info).lstrip(";") or "."
+                info = re.sub(r";?SVTYPE=[^;]+", "", info).lstrip(";") or "."
+            if args.remap_chain and info == ".":
+                info = ""
 
             # Reorder sample columns
-            new_samples = [sample_data[i] if i < len(sample_data) else "."
-                           for i in sample_order]
+            new_samples = [
+                sample_data[i] if i < len(sample_data) else "." for i in sample_order
+            ]
 
             # Expand multiallelic lines
             reconstructed = (
                 f"{chrom}\t{pos_str}\t{vid}\t{ref}\t{alt_field}\t"
-                f"{qual}\t{filt}\t{info}\t{fmt_str}\t"
-                + "\t".join(new_samples) + "\n"
+                f"{qual}\t{filt}\t{info}\t{fmt_str}\t" + "\t".join(new_samples) + "\n"
             )
             for split_line in split_multiallelic(reconstructed):
                 out_fh.write(split_line)
@@ -307,14 +358,27 @@ def vcf2vcf(args: argparse.Namespace) -> None:
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
         datefmt="%H:%M:%S",
     )
+    try:
+        from .config import load_config
+    except ImportError:
+        from config import load_config  # type: ignore[no-redef]
+
+    pre = argparse.ArgumentParser(add_help=False)
+    pre.add_argument("--config", default="")
+    pre_args, _ = pre.parse_known_args()
+
     parser = build_parser()
-    args   = parser.parse_args()
+    cfg = load_config(pre_args.config or None)
+    if cfg:
+        parser.set_defaults(**cfg)
+    args = parser.parse_args()
     vcf2vcf(args)
 
 

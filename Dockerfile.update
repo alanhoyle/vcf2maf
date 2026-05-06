@@ -1,0 +1,4 @@
+FROM vcf2maf:main
+COPY pyproject.toml README.md /tmp/vcf2maf/
+COPY vcf2maf/ /tmp/vcf2maf/vcf2maf/
+RUN /usr/local/bin/pip install --no-build-isolation --quiet /tmp/vcf2maf/ && rm -rf /tmp/vcf2maf
