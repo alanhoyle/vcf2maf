@@ -19,11 +19,55 @@ VCF files into MAF format by annotating each variant to exactly one gene isoform
 
 ## Requirements
 
-- Python ≥ 3.8 (standard library only – no third-party dependencies)
+- Python ≥ 3.8 (see [Configuration](#configuration) for optional TOML dependency)
 - [Ensembl VEP](https://www.ensembl.org/info/docs/tools/vep/script/vep_download.html)
   with the relevant offline cache installed
 - `samtools` on `PATH` (used by `maf2vcf` for indel anchor bases)
 - `liftOver` on `PATH` (optional, only needed with `--remap-chain`)
+
+---
+
+## Configuration
+
+All four tools look for a TOML config file at `~/.vcf2maf.toml` (then
+`.vcf2maf.toml` in the current directory) and use any values found there as
+defaults, which individual CLI flags can still override.  A different file can
+be specified with `--config`:
+
+```bash
+vcf2maf --config /path/to/site.toml --input-vcf ...
+```
+
+Copy `vcf2maf.toml.example` from this repository as a starting point:
+
+```bash
+cp vcf2maf.toml.example ~/.vcf2maf.toml
+```
+
+The file uses standard TOML syntax under a `[defaults]` table.  Keys are the
+argparse dest names (underscores, not hyphens).  All entries are optional:
+
+```toml
+[defaults]
+ref_fasta     = "~/.vep/homo_sapiens/112_GRCh38/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz"
+ncbi_build    = "GRCh38"
+vep_path      = "~/miniconda3/bin"
+vep_data      = "~/.vep"
+vep_forks     = 4
+buffer_size   = 5000
+species       = "homo_sapiens"
+samtools      = "samtools"
+bcftools      = "bcftools"
+liftover_exec = "liftOver"
+
+# GRCh37 alternative:
+# ref_fasta  = "~/.vep/homo_sapiens/112_GRCh37/Homo_sapiens.GRCh37.dna.toplevel.fa.gz"
+# ncbi_build = "GRCh37"
+```
+
+Config file support requires Python ≥ 3.11 (stdlib `tomllib`) or the
+[`tomli`](https://pypi.org/project/tomli/) back-port for earlier versions.
+If neither is available the tools still work — the config file is simply ignored.
 
 ---
 
@@ -90,7 +134,7 @@ python maf2maf.py \
 python maf2vcf.py \
   --input-maf  tests/test.maf \
   --output-dir vcfs/ \
-  --ref-fasta  ~/.vep/homo_sapiens/112_GRCh37/Homo_sapiens.GRCh37.dna.toplevel.fa.gz
+  --ref-fasta  ~/.vep/homo_sapiens/112_GRCh38/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
 ```
 
 ---
@@ -111,14 +155,15 @@ python vcf2vcf.py \
 
 | Option            | Default                | Description                                          |
 | ----------------- | ---------------------- | ---------------------------------------------------- |
+| `--config`        | `~/.vcf2maf.toml`      | TOML config file; CLI flags override its values      |
 | `--tumor-id`      | `TUMOR`                | Tumor sample barcode in output MAF                   |
 | `--normal-id`     | `NORMAL`               | Normal sample barcode in output MAF                  |
 | `--vcf-tumor-id`  | `--tumor-id`           | Sample column name in input VCF                      |
 | `--vcf-normal-id` | `--normal-id`          | Sample column name in input VCF                      |
 | `--vep-path`      | `~/miniconda3/bin`     | Directory containing the `vep` binary                |
 | `--vep-data`      | `~/.vep`               | VEP offline cache directory                          |
-| `--ref-fasta`     | `~/.vep/…GRCh37…fa.gz` | Reference FASTA (must be samtools-indexed)           |
-| `--ncbi-build`    | `GRCh37`               | Genome build; used in MAF `NCBI_Build` column        |
+| `--ref-fasta`     | `~/.vep/…GRCh38…fa.gz` | Reference FASTA (must be samtools-indexed)           |
+| `--ncbi-build`    | `GRCh38`               | Genome build; used in MAF `NCBI_Build` column        |
 | `--species`       | `homo_sapiens`         | Ensembl species name                                 |
 | `--cache-version` | auto                   | VEP offline cache version                            |
 | `--inhibit-vep`   | off                    | Skip VEP; parse existing CSQ/ANN if present          |
@@ -139,6 +184,7 @@ python vcf2vcf.py \
 
 ``` text
 vcf2maf/
+├── config.py      # TOML config loader (~/.vcf2maf.toml → argparse defaults)
 ├── constants.py   # VEP consequence priority table, MAF column list,
 │                  # biotype rankings, VEP→MAF effect map
 ├── vcf2maf.py     # VCF → MAF  (VEP runner + annotation parser + MAF writer)
@@ -146,21 +192,77 @@ vcf2maf/
 ├── maf2maf.py     # MAF → MAF  (orchestrates maf2vcf + vcf2maf + merge)
 ├── vcf2vcf.py     # VCF → normalised VCF  (multiallelic split, liftOver)
 └── pyproject.toml
+tests/
+├── download_references.sh   # fetch GRCh38/GRCh37 FASTA + VEP cache
+├── test_upstream_docker.py  # Docker integration tests vs upstream golden MAFs
+├── test.maf / test.vcf / …  # upstream fixture inputs
+└── *.maf                    # golden output files (upstream Perl reference)
+vcf2maf.toml.example         # documented config template
 ```
+
+---
+
+## Testing
+
+The test suite runs the four tools inside Docker against the upstream fixture
+files and golden MAF outputs from the Perl implementation.
+
+### 1. Build the Docker image
+
+```bash
+docker build -t vcf2maf:main .
+```
+
+### 2. Download reference data
+
+```bash
+tests/download_references.sh
+```
+
+This fetches and indexes the GRCh38 chr21 reference FASTA and the VEP 112
+GRCh38 chr21 cache into `tests/`.  It is idempotent and skips files that
+already exist.
+
+To also install the full GRCh37 VEP 112 cache required by the `maf2maf` tests
+(large, ~20 GB):
+
+```bash
+tests/download_references.sh --full-grch37
+```
+
+### 3. Run the suite
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+The `maf2maf` tests are automatically skipped when the full GRCh37 cache is
+absent.
+
+### Environment variables
+
+| Variable                  | Purpose                                                        |
+| ------------------------- | -------------------------------------------------------------- |
+| `VCF2MAF_DOCKER_IMAGE`    | Docker image to test against (default: `vcf2maf:main`)         |
+| `VCF2MAF_DOCKER_PLATFORM` | Docker platform (default: `linux/amd64`)                       |
+| `PRESERVE_TESTS`          | Set to `1` to keep intermediate output files after test runs   |
+
+See `tests/README.md` for full details on reference data layout and cache
+requirements.
 
 ---
 
 ## Differences from the Perl original
 
-| Area             | Perl                           | Python                                |
-| ---------------- | ------------------------------ | ------------------------------------- |
-| Language         | Perl 5                         | Python ≥ 3.8                          |
-| Dependencies     | CPAN modules                   | stdlib only                           |
-| VEP interaction  | `system()` call                | `subprocess.run()`                    |
-| Reference lookup | inline `samtools faidx`        | same via subprocess                   |
-| Liftover         | `liftOver` binary              | same via subprocess                   |
-| Parallelism      | `--vep-forks` forwarded to VEP | same                                  |
-| ExAC columns     | present                        | preserved (empty; use gnomAD columns) |
+| Area             | Perl                           | Python                                         |
+| ---------------- | ------------------------------ | ---------------------------------------------- |
+| Language         | Perl 5                         | Python ≥ 3.8                                   |
+| Dependencies     | CPAN modules                   | stdlib only (`tomli` optional for config file) |
+| VEP interaction  | `system()` call                | `subprocess.run()`                             |
+| Reference lookup | inline `samtools faidx`        | same via subprocess                            |
+| Liftover         | `liftOver` binary              | same via subprocess                            |
+| Parallelism      | `--vep-forks` forwarded to VEP | same                                           |
+| ExAC columns     | present                        | preserved (empty; use gnomAD columns)          |
 
 Functional behaviour is identical for all standard use-cases. The Python code
 explicitly documents each decision point that mirrors the Perl logic.
