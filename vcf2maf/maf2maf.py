@@ -85,6 +85,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--retain-info", default="")
     p.add_argument("--retain-fmt", default="")
     p.add_argument("--retain-ann", default="")
+    p.add_argument("--retain-ann-all", action="store_true", default=False,
+                   help="Retain all VEP CSQ annotation fields as extra MAF columns")
     p.add_argument(
         "--retain-cols",
         default="",
@@ -171,6 +173,7 @@ def maf2maf(args: argparse.Namespace) -> None:
                 retain_info=args.retain_info,
                 retain_fmt=args.retain_fmt,
                 retain_ann=args.retain_ann,
+                retain_ann_all=args.retain_ann_all,
                 custom_enst=args.custom_enst,
                 remap_chain=args.remap_chain,
                 liftover_exec=args.liftover_exec,

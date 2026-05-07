@@ -1,7 +1,7 @@
 # vcf2maf (Python port)
 
 A pure-Python port of [mskcc/vcf2maf](https://github.com/mskcc/vcf2maf), which converts
-VCF files into MAF format by annotating each variant to exactly one gene isoform via
+[VCF](https://samtools.github.io/hts-specs/VCFv4.3.pdf) files into [MAF](https://docs.gdc.cancer.gov/Data/File_Formats/MAF_Format/) format by annotating each variant to exactly one gene isoform via
 [Ensembl VEP](https://www.ensembl.org/info/docs/tools/vep/index.html).
 
 ---
@@ -19,7 +19,7 @@ VCF files into MAF format by annotating each variant to exactly one gene isoform
 
 ## Requirements
 
-- Python ≥ 3.8 (see [Configuration](#configuration) for optional TOML dependency)
+- Python ≥ 3.8
 - [Ensembl VEP](https://www.ensembl.org/info/docs/tools/vep/script/vep_download.html)
   with the relevant offline cache installed
 - `samtools` on `PATH` (used by `maf2vcf` for indel anchor bases)
@@ -27,11 +27,35 @@ VCF files into MAF format by annotating each variant to exactly one gene isoform
 
 ---
 
+## Installation
+
+Clone the repository and run the scripts directly — no build step is required:
+
+```bash
+git clone https://github.com/alanhoyle/vcf2maf.git -b python
+cd vcf2maf
+```
+
+The tools have no mandatory third-party Python dependencies. Config file
+support (see [Configuration](#configuration)) requires Python ≥ 3.11 (stdlib
+`tomllib`) or the [`tomli`](https://pypi.org/project/tomli/) back-port for
+Python 3.8–3.10:
+
+```bash
+pip install tomli
+```
+
+Ensembl VEP must be installed separately with its offline cache. The easiest
+route is the [VEP installer](https://www.ensembl.org/info/docs/tools/vep/script/vep_download.html)
+or the pre-built Docker image (see [Testing](tests/README.md)).
+
+---
+
 ## Configuration
 
 All four tools look for a TOML config file at `~/.vcf2maf.toml` (then
 `.vcf2maf.toml` in the current directory) and use any values found there as
-defaults, which individual CLI flags can still override.  A different file can
+defaults, which individual CLI flags can still override. A different file can
 be specified with `--config`:
 
 ```bash
@@ -44,8 +68,8 @@ Copy `vcf2maf.toml.example` from this repository as a starting point:
 cp vcf2maf.toml.example ~/.vcf2maf.toml
 ```
 
-The file uses standard TOML syntax under a `[defaults]` table.  Keys are the
-argparse dest names (underscores, not hyphens).  All entries are optional:
+The file uses standard TOML syntax under a `[defaults]` table. Keys are the
+argparse dest names (underscores, not hyphens). All entries are optional:
 
 ```toml
 [defaults]
@@ -153,36 +177,37 @@ python vcf2vcf.py \
 
 ## Key options (vcf2maf.py)
 
-| Option            | Default                | Description                                          |
-| ----------------- | ---------------------- | ---------------------------------------------------- |
-| `--config`        | `~/.vcf2maf.toml`      | TOML config file; CLI flags override its values      |
-| `--tumor-id`      | `TUMOR`                | Tumor sample barcode in output MAF                   |
-| `--normal-id`     | `NORMAL`               | Normal sample barcode in output MAF                  |
-| `--vcf-tumor-id`  | `--tumor-id`           | Sample column name in input VCF                      |
-| `--vcf-normal-id` | `--normal-id`          | Sample column name in input VCF                      |
-| `--vep-path`      | `~/miniconda3/bin`     | Directory containing the `vep` binary                |
-| `--vep-data`      | `~/.vep`               | VEP offline cache directory                          |
-| `--ref-fasta`     | `~/.vep/…GRCh38…fa.gz` | Reference FASTA (must be samtools-indexed)           |
-| `--ncbi-build`    | `GRCh38`               | Genome build; used in MAF `NCBI_Build` column        |
-| `--species`       | `homo_sapiens`         | Ensembl species name                                 |
-| `--cache-version` | auto                   | VEP offline cache version                            |
-| `--inhibit-vep`   | off                    | Skip VEP; parse existing CSQ/ANN if present          |
-| `--custom-enst`   | –                      | File of preferred Ensembl transcript IDs             |
-| `--retain-info`   | –                      | Comma-sep INFO keys to add as extra MAF columns      |
-| `--retain-fmt`    | –                      | Comma-sep FORMAT keys to add as extra MAF columns    |
-| `--retain-ann`    | –                      | Comma-sep VEP CSQ fields to add as extra MAF columns |
-| `--max-subpop-af` | `0.0004`               | gnomAD AF threshold for `common_variant` FILTER tag  |
-| `--min-hom-vaf`   | `0.7`                  | VAF threshold to call a homozygous variant           |
-| `--remap-chain`   | –                      | UCSC liftOver chain file for coordinate remapping    |
-| `--vep-forks`     | `4`                    | Number of parallel VEP forks                         |
-| `--vep-custom`    | –                      | Passed to VEP `--custom`                             |
-| `--vep-plugins`   | –                      | Passed to VEP `--plugin`                             |
+| Option             | Default                | Description                                          |
+| ------------------ | ---------------------- | ---------------------------------------------------- |
+| `--config`         | `~/.vcf2maf.toml`      | TOML config file; CLI flags override its values      |
+| `--tumor-id`       | `TUMOR`                | Tumor sample barcode in output MAF                   |
+| `--normal-id`      | `NORMAL`               | Normal sample barcode in output MAF                  |
+| `--vcf-tumor-id`   | `--tumor-id`           | Sample column name in input VCF                      |
+| `--vcf-normal-id`  | `--normal-id`          | Sample column name in input VCF                      |
+| `--vep-path`       | `~/miniconda3/bin`     | Directory containing the `vep` binary                |
+| `--vep-data`       | `~/.vep`               | VEP offline cache directory                          |
+| `--ref-fasta`      | `~/.vep/…GRCh38…fa.gz` | Reference FASTA (must be samtools-indexed)           |
+| `--ncbi-build`     | `GRCh38`               | Genome build; used in MAF `NCBI_Build` column        |
+| `--species`        | `homo_sapiens`         | Ensembl species name                                 |
+| `--cache-version`  | auto                   | VEP offline cache version                            |
+| `--inhibit-vep`    | off                    | Skip VEP; parse existing CSQ/ANN if present          |
+| `--custom-enst`    | –                      | File of preferred Ensembl transcript IDs             |
+| `--retain-info`    | –                      | Comma-sep INFO keys to add as extra MAF columns      |
+| `--retain-fmt`     | –                      | Comma-sep FORMAT keys to add as extra MAF columns    |
+| `--retain-ann`     | –                      | Comma-sep VEP CSQ fields to add as extra MAF columns |
+| `--retain-ann-all` | off                    | Add every VEP CSQ field as an extra MAF column       |
+| `--max-subpop-af`  | `0.0004`               | gnomAD AF threshold for `common_variant` FILTER tag  |
+| `--min-hom-vaf`    | `0.7`                  | VAF threshold to call a homozygous variant           |
+| `--remap-chain`    | –                      | UCSC liftOver chain file for coordinate remapping    |
+| `--vep-forks`      | `4`                    | Number of parallel VEP forks                         |
+| `--vep-custom`     | –                      | Passed to VEP `--custom`                             |
+| `--vep-plugins`    | –                      | Passed to VEP `--plugin`                             |
 
 ---
 
 ## Architecture
 
-``` text
+```text
 vcf2maf/
 ├── config.py      # TOML config loader (~/.vcf2maf.toml → argparse defaults)
 ├── constants.py   # VEP consequence priority table, MAF column list,
@@ -204,51 +229,17 @@ vcf2maf.toml.example         # documented config template
 
 ## Testing
 
-The test suite runs the four tools inside Docker against the upstream fixture
-files and golden MAF outputs from the Perl implementation.
-
-### 1. Build the Docker image
+The test suite runs all four tools inside Docker and diffs output against the
+upstream Perl golden MAFs. Quick steps:
 
 ```bash
-docker build -t vcf2maf:main .
+docker build -t vcf2maf:main .             # Build Docker image for tests
+tests/download_references.sh               # Download basic refence files
+python3 -m unittest discover -s tests -v   # Run tests
 ```
 
-### 2. Download reference data
-
-```bash
-tests/download_references.sh
-```
-
-This fetches and indexes the GRCh38 chr21 reference FASTA and the VEP 112
-GRCh38 chr21 cache into `tests/`.  It is idempotent and skips files that
-already exist.
-
-To also install the full GRCh37 VEP 112 cache required by the `maf2maf` tests
-(large, ~20 GB):
-
-```bash
-tests/download_references.sh --full-grch37
-```
-
-### 3. Run the suite
-
-```bash
-python3 -m unittest discover -s tests -v
-```
-
-The `maf2maf` tests are automatically skipped when the full GRCh37 cache is
-absent.
-
-### Environment variables
-
-| Variable                  | Purpose                                                        |
-| ------------------------- | -------------------------------------------------------------- |
-| `VCF2MAF_DOCKER_IMAGE`    | Docker image to test against (default: `vcf2maf:main`)         |
-| `VCF2MAF_DOCKER_PLATFORM` | Docker platform (default: `linux/amd64`)                       |
-| `PRESERVE_TESTS`          | Set to `1` to keep intermediate output files after test runs   |
-
-See `tests/README.md` for full details on reference data layout and cache
-requirements.
+See [tests/README.md](tests/README.md) for full details on reference data
+layout, cache requirements, and environment variables.
 
 ---
 
@@ -264,8 +255,10 @@ requirements.
 | Parallelism      | `--vep-forks` forwarded to VEP | same                                           |
 | ExAC columns     | present                        | preserved (empty; use gnomAD columns)          |
 
-Functional behaviour is identical for all standard use-cases. The Python code
-explicitly documents each decision point that mirrors the Perl logic.
+Functional behaviour should be identical for all standard use-cases. The Python code
+should document each decision point that mirrors the Perl logic.
+
+Most of the port was handled using Claude Code and OpenAI's Codex tools, supervised by Alan Hoyle <alanh@unc.edu>
 
 ---
 

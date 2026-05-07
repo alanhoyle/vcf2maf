@@ -154,6 +154,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Comma-separated VEP CSQ fields to retain as extra MAF columns",
     )
     p.add_argument(
+        "--retain-ann-all",
+        action="store_true",
+        default=False,
+        help="Retain all VEP CSQ annotation fields as extra MAF columns",
+    )
+    p.add_argument(
         "--custom-enst",
         default="",
         help="File of custom Ensembl transcript IDs (one per line) to prefer",
@@ -753,7 +759,7 @@ def vcf2maf(args: argparse.Namespace) -> None:
     retain_fmt_keys = [k for k in args.retain_fmt.split(",") if k]
     retain_ann_keys = [k for k in args.retain_ann.split(",") if k]
 
-    extra_cols = retain_info_keys + retain_fmt_keys + retain_ann_keys
+    extra_cols: List[str] = []  # finalized after VCF header is parsed
 
     header_lines: List[str] = []
     csq_fields: List[str] = []
@@ -788,6 +794,13 @@ def vcf2maf(args: argparse.Namespace) -> None:
                 csq_fields = parse_csq_header(header_lines)
                 if not csq_fields:
                     ann_fields = parse_ann_header(header_lines)
+                if args.retain_ann_all:
+                    maf_col_set = set(MAF_COLUMNS)
+                    seen_ann = set(retain_ann_keys)
+                    for f in csq_fields:
+                        if f not in maf_col_set and f not in seen_ann:
+                            retain_ann_keys.append(f)
+                extra_cols = retain_info_keys + retain_fmt_keys + retain_ann_keys
                 continue
 
             # ---- Variant line -----------------------------------------
