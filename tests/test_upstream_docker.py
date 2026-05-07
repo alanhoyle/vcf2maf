@@ -14,12 +14,16 @@ import unittest
 from collections import Counter
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 TESTS = ROOT / "tests"
 IMAGE = os.environ.get("VCF2MAF_DOCKER_IMAGE", "vcf2maf:main")
 PLATFORM = os.environ.get("VCF2MAF_DOCKER_PLATFORM", "linux/amd64")
-PRESERVE_TESTS = os.environ.get("PRESERVE_TESTS", "").strip().lower() not in {"", "0", "false", "no"}
+PRESERVE_TESTS = os.environ.get("PRESERVE_TESTS", "").strip().lower() not in {
+    "",
+    "0",
+    "false",
+    "no",
+}
 REF_FASTA = TESTS / "Homo_sapiens.GRCh38.dna.chromosome.21.fa"
 VEP_CACHE = TESTS / "homo_sapiens"
 FULL_VEP_CACHE = TESTS / "homo_sapiens" / "112_GRCh37"
@@ -28,10 +32,10 @@ GRCH37_REF_FASTA = FULL_VEP_CACHE / "Homo_sapiens.GRCh37.dna.toplevel.fa.gz"
 # maf2maf.t skips col 58 (ALLELE_NUM) and col 95 (VARIANT_CLASS), both
 # VEP-version-dependent fields. Nothing else should be ignored.
 MAF_IGNORED_COLUMNS = {
-    "DOMAINS",       # randomly ordered comma-delimited list
-    "ALLELE_NUM",    # VEP-version specific (maf2maf.t col 58)
-    "VARIANT_CLASS", # VEP-version specific (maf2maf.t col 95)
-    "SWISSPROT",     # format changed between VEP cache builds (accession vs entry-name)
+    "DOMAINS",  # randomly ordered comma-delimited list
+    "ALLELE_NUM",  # VEP-version specific (maf2maf.t col 58)
+    "VARIANT_CLASS",  # VEP-version specific (maf2maf.t col 95)
+    "SWISSPROT",  # format changed between VEP cache builds (accession vs entry-name)
     "ExAC_AF",
     "ExAC_AF_AFR",
     "ExAC_AF_AMR",
@@ -55,7 +59,7 @@ MAF_IGNORED_COLUMNS = {
 
 # Additional columns that differ between gnomAD cache versions (maf2maf only)
 MAF_IGNORED_COLUMNS_MAF2MAF = MAF_IGNORED_COLUMNS | {
-    "gnomAD_AF",      # gnomAD exome AF values differ between cache builds
+    "gnomAD_AF",  # gnomAD exome AF values differ between cache builds
     "gnomAD_AFR_AF",  # gnomAD population AFs differ between cache builds (values and 0/empty)
     "gnomAD_AMR_AF",
     "gnomAD_ASJ_AF",
@@ -64,21 +68,21 @@ MAF_IGNORED_COLUMNS_MAF2MAF = MAF_IGNORED_COLUMNS | {
     "gnomAD_NFE_AF",
     "gnomAD_OTH_AF",
     "gnomAD_SAS_AF",
-    "all_effects",        # deprecated genes (e.g. RP11-337C18.10) absent in newer VEP caches
-    "Hugo_Symbol",        # regulatory vs intergenic feature choice can differ by cache
+    "all_effects",  # deprecated genes (e.g. RP11-337C18.10) absent in newer VEP caches
+    "Hugo_Symbol",  # regulatory vs intergenic feature choice can differ by cache
     "Transcript_ID",
     "Feature",
     "Feature_type",
     "Consequence",
     "BIOTYPE",
-    "Existing_variation", # COSMIC entries added in newer cache builds
+    "Existing_variation",  # COSMIC entries added in newer cache builds
     "SOMATIC",
     "PHENO",
-    "CLIN_SIG",           # ClinVar significance categories expand between cache builds
-    "PUBMED",             # more PubMed entries in newer cache builds
-    "GENE_PHENO",         # gene phenotype annotations added in newer cache builds
-    "flanking_bps",       # 1-base context depends on reference FASTA; toplevel vs primary_assembly differ
-    "dbSNP_RS",          # rsIDs added between VEP cache builds (database version difference)
+    "CLIN_SIG",  # ClinVar significance categories expand between cache builds
+    "PUBMED",  # more PubMed entries in newer cache builds
+    "GENE_PHENO",  # gene phenotype annotations added in newer cache builds
+    "flanking_bps",  # 1-base context depends on reference FASTA; toplevel vs primary_assembly differ
+    "dbSNP_RS",  # rsIDs added between VEP cache builds (database version difference)
     # "Match_Norm_Seq_Allele2",
     # "Tumor_Seq_Allele1",
     # "Match_Norm_Seq_Allele1",
@@ -119,7 +123,9 @@ def require_docker() -> None:
     if not command_ok(["docker", "info"]):
         raise unittest.SkipTest("Docker is not running")
     if not command_ok(["docker", "image", "inspect", IMAGE]):
-        raise unittest.SkipTest(f"Docker image {IMAGE!r} not found; run: docker build -t {IMAGE} .")
+        raise unittest.SkipTest(
+            f"Docker image {IMAGE!r} not found; run: docker build -t {IMAGE} ."
+        )
 
 
 def require_ref_fasta() -> None:
@@ -166,7 +172,9 @@ def docker_run(args: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, capture_output=True, text=True)
 
 
-def assert_success(test: unittest.TestCase, result: subprocess.CompletedProcess[str]) -> None:
+def assert_success(
+    test: unittest.TestCase, result: subprocess.CompletedProcess[str]
+) -> None:
     detail = "\n".join(part for part in [result.stdout, result.stderr] if part)
     test.assertEqual(result.returncode, 0, detail)
 
@@ -179,13 +187,19 @@ def read_tsv(path: Path) -> list[list[str]]:
 def without_columns(path: Path, one_based_columns: set[int]) -> list[list[str]]:
     rows = read_tsv(path)
     return [
-        [value for idx, value in enumerate(row, start=1) if idx not in one_based_columns]
+        [
+            value
+            for idx, value in enumerate(row, start=1)
+            if idx not in one_based_columns
+        ]
         for row in rows
     ]
 
 
 def without_lines_starting(path: Path, prefix: str) -> list[str]:
-    return [line for line in path.read_text().splitlines() if not line.startswith(prefix)]
+    return [
+        line for line in path.read_text().splitlines() if not line.startswith(prefix)
+    ]
 
 
 def read_maf(path: Path) -> tuple[list[str], list[dict[str, str]]]:
@@ -232,7 +246,10 @@ def shared_maf_projection(path: Path, ignored_columns: set[str]) -> list[tuple]:
     cols, rows = read_maf(path)
     kept_cols = [col for col in cols if col not in ignored_columns]
     return [
-        (maf_key(row), tuple(normalize_maf_value(col, row.get(col, "")) for col in kept_cols))
+        (
+            maf_key(row),
+            tuple(normalize_maf_value(col, row.get(col, "")) for col in kept_cols),
+        )
         for row in rows
     ]
 
@@ -247,16 +264,21 @@ def assert_shared_maf_columns_match(
     actual_cols, actual_rows = read_maf(actual)
     ignored = ignored_columns or set()
     shared_cols = [
-        col for col in expected_cols
-        if col in actual_cols and col not in ignored
+        col for col in expected_cols if col in actual_cols and col not in ignored
     ]
     test.assertTrue(shared_cols, "No shared MAF columns to compare")
     expected_projection = sorted(
-        (maf_key(row), tuple(normalize_maf_value(col, row.get(col, "")) for col in shared_cols))
+        (
+            maf_key(row),
+            tuple(normalize_maf_value(col, row.get(col, "")) for col in shared_cols),
+        )
         for row in expected_rows
     )
     actual_projection = sorted(
-        (maf_key(row), tuple(normalize_maf_value(col, row.get(col, "")) for col in shared_cols))
+        (
+            maf_key(row),
+            tuple(normalize_maf_value(col, row.get(col, "")) for col in shared_cols),
+        )
         for row in actual_rows
     )
     if expected_projection != actual_projection:
@@ -269,10 +291,16 @@ def assert_shared_maf_columns_match(
             message_parts.append(f"Missing expected rows: {missing[:3]}")
         if unexpected:
             message_parts.append(f"Unexpected rows: {unexpected[:3]}")
-        shared_keys = sorted({key for key, _ in missing} & {key for key, _ in unexpected})
+        shared_keys = sorted(
+            {key for key, _ in missing} & {key for key, _ in unexpected}
+        )
         for key in shared_keys[:3]:
-            expected_values = next(values for row_key, values in missing if row_key == key)
-            actual_values = next(values for row_key, values in unexpected if row_key == key)
+            expected_values = next(
+                values for row_key, values in missing if row_key == key
+            )
+            actual_values = next(
+                values for row_key, values in unexpected if row_key == key
+            )
             diffs = [
                 f"{col}: expected {exp!r}, got {act!r}"
                 for col, exp, act in zip(shared_cols, expected_values, actual_values)
