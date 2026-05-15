@@ -59,6 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--ncbi-build", default="GRCh38")
     p.add_argument("--verbose", action="store_true")
+    p.add_argument("--debug", action="store_true", help="Set log level to DEBUG")
     return p
 
 
@@ -336,8 +337,8 @@ def vcf2vcf(args: argparse.Namespace) -> None:
                 new_locus = remap[orig_key]
                 chrom, new_pos = new_locus.split(":")
                 pos_str = new_pos
-
-            pos = int(pos_str)
+            elif remap:
+                log.debug("Liftover miss — keeping original coords for %s", orig_key)
 
             # Remove INFO/SVTYPE if ALT is defined (not symbolic)
             if not alt_field.startswith("<"):
@@ -367,8 +368,13 @@ def vcf2vcf(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    pre = argparse.ArgumentParser(add_help=False)
+    pre.add_argument("--config", default="")
+    pre.add_argument("--debug", action="store_true")
+    pre_args, _ = pre.parse_known_args()
+
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG if pre_args.debug else logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
         datefmt="%H:%M:%S",
     )
@@ -376,10 +382,6 @@ def main() -> None:
         from .config import load_config
     except ImportError:
         from config import load_config  # type: ignore[no-redef]
-
-    pre = argparse.ArgumentParser(add_help=False)
-    pre.add_argument("--config", default="")
-    pre_args, _ = pre.parse_known_args()
 
     parser = build_parser()
     cfg = load_config(pre_args.config or None)

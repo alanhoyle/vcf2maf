@@ -116,6 +116,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--remap-chain", default="")
     p.add_argument("--liftover-exec", default="liftOver")
     p.add_argument("--verbose", action="store_true")
+    p.add_argument("--debug", action="store_true", help="Set log level to DEBUG")
     return p
 
 
@@ -149,6 +150,7 @@ def maf2maf(args: argparse.Namespace) -> None:
             samtools=args.samtools,
             ncbi_build=args.ncbi_build,
             verbose=args.verbose,
+            debug=args.debug,
         )
         vcf_paths = m2v.maf2vcf(m2v_args)
 
@@ -206,6 +208,7 @@ def maf2maf(args: argparse.Namespace) -> None:
                 any_allele=False,
                 online=False,
                 verbose=args.verbose,
+                debug=args.debug,
             )
             log.info(
                 "Step 2 [%d/%d]: annotating %s (tumor=%s, normal=%s)",
@@ -326,8 +329,13 @@ def _get_by_map(parts: list, idx: dict, key: str) -> str:
 
 
 def main() -> None:
+    pre = argparse.ArgumentParser(add_help=False)
+    pre.add_argument("--config", default="")
+    pre.add_argument("--debug", action="store_true")
+    pre_args, _ = pre.parse_known_args()
+
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG if pre_args.debug else logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
         datefmt="%H:%M:%S",
     )
@@ -335,10 +343,6 @@ def main() -> None:
         from .config import load_config
     except ImportError:
         from config import load_config  # type: ignore[no-redef]
-
-    pre = argparse.ArgumentParser(add_help=False)
-    pre.add_argument("--config", default="")
-    pre_args, _ = pre.parse_known_args()
 
     parser = build_parser()
     cfg = load_config(pre_args.config or None)

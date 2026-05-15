@@ -218,6 +218,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Use VEP REST API instead of offline cache (slow)",
     )
     p.add_argument("--verbose", action="store_true")
+    p.add_argument("--debug", action="store_true", help="Set log level to DEBUG")
 
     return p
 
@@ -730,6 +731,8 @@ def run_vep(input_vcf: str, vep_vcf: str, args: argparse.Namespace) -> None:
             cmd += ["--plugin", plugin.strip()]
     if getattr(args, "vep_overwrite", False):
         cmd += ["--force_overwrite"]
+    if args.verbose:
+        cmd += ["--verbose"]
 
     if getattr(args, "vep_log_cmd", False):
         log.info("Running VEP:\n  %s", _format_cmd(cmd))
@@ -900,6 +903,7 @@ def vcf2maf(args: argparse.Namespace) -> None:
 
             # Skip if tumor allele is the reference
             if tumor_allele == ref and not args.any_allele:
+                log.debug("Skip %s:%d — tumor allele matches ref (%s)", chrom, pos, ref)
                 continue
 
             # Convert to MAF coordinates
@@ -915,6 +919,8 @@ def vcf2maf(args: argparse.Namespace) -> None:
             elif "ANN" in info and ann_fields:
                 csq_entries = parse_csq_entries(info["ANN"], ann_fields)
 
+            if not csq_entries:
+                log.debug("No CSQ/ANN for %s:%d, using empty best_csq", chrom, pos)
             is_deletion_allele = maf_alt == "-"
             best_csq = pick_best_csq(
                 csq_entries,
@@ -925,6 +931,7 @@ def vcf2maf(args: argparse.Namespace) -> None:
                 var_allele_idx,
             )
             if best_csq is None:
+                log.debug("No PICK transcript at %s:%d; falling back to empty", chrom, pos)
                 best_csq = {}
 
             # ---- Variant classification --------------------------------
@@ -1478,8 +1485,13 @@ def _build_all_effects(
 
 
 def main() -> None:
+    pre = argparse.ArgumentParser(add_help=False)
+    pre.add_argument("--config", default="")
+    pre.add_argument("--debug", action="store_true")
+    pre_args, _ = pre.parse_known_args()
+
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG if pre_args.debug else logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
         datefmt="%H:%M:%S",
     )
@@ -1487,10 +1499,6 @@ def main() -> None:
         from .config import load_config
     except ImportError:
         from config import load_config  # type: ignore[no-redef]
-
-    pre = argparse.ArgumentParser(add_help=False)
-    pre.add_argument("--config", default="")
-    pre_args, _ = pre.parse_known_args()
 
     parser = build_parser()
     cfg = load_config(pre_args.config or None)
