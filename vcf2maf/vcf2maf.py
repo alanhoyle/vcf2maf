@@ -101,9 +101,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--vep-stats",
-        default="",
+        nargs="?",
+        const=True,
+        default=None,
         help="Path for VEP summary stats file (HTML). "
-        "Omit or leave empty to suppress stats output (--no_stats).",
+        "Omit to suppress stats (--no_stats). "
+        "Pass without a value to use VEP's default stats filename.",
+    )
+    p.add_argument(
+        "--vep-stats-text",
+        action="store_true",
+        default=False,
+        help="Also write a plain-text stats file (passes --stats_text to VEP).",
+    )
+    p.add_argument(
+        "--vep-stats-html",
+        action="store_true",
+        default=False,
+        help="Also write an HTML stats file (passes --stats_html to VEP).",
     )
 
     # Reference / genome
@@ -668,11 +683,19 @@ def run_vep(input_vcf: str, vep_vcf: str, args: argparse.Namespace) -> None:
         "--assembly",
         args.ncbi_build,
     ]
-    # Stats file: write to the requested path, or suppress entirely
-    if getattr(args, "vep_stats", ""):
-        cmd += ["--stats_file", args.vep_stats]
-    else:
+    # Stats file handling:
+    #   omitted (None)  → suppress stats with --no_stats
+    #   --vep-stats     → use VEP's default stats filename
+    #   --vep-stats PATH → write stats to PATH
+    if args.vep_stats is None:
         cmd += ["--no_stats"]
+    elif args.vep_stats is not True:
+        cmd += ["--stats_file", args.vep_stats]
+    # else: flag present with no value — let VEP use its default filename
+    if getattr(args, "vep_stats_text", False):
+        cmd += ["--stats_text"]
+    if getattr(args, "vep_stats_html", False):
+        cmd += ["--stats_html"]
     if args.cache_version:
         cmd += ["--cache_version", args.cache_version]
     if args.vep_custom:

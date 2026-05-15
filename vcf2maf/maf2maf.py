@@ -71,9 +71,24 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--vep-overwrite", action="store_true")
     p.add_argument(
         "--vep-stats",
-        default="",
+        nargs="?",
+        const=True,
+        default=None,
         help="Path for VEP summary stats file (HTML). "
-        "Omit or leave empty to suppress stats output (--no_stats).",
+        "Omit to suppress stats (--no_stats). "
+        "Pass without a value to use VEP's default stats filename.",
+    )
+    p.add_argument(
+        "--vep-stats-text",
+        action="store_true",
+        default=False,
+        help="Also write a plain-text stats file (passes --stats_text to VEP).",
+    )
+    p.add_argument(
+        "--vep-stats-html",
+        action="store_true",
+        default=False,
+        help="Also write an HTML stats file (passes --stats_html to VEP).",
     )
     p.add_argument("--inhibit-vep", action="store_true")
     p.add_argument("--ncbi-build", default="GRCh38")
@@ -164,6 +179,8 @@ def maf2maf(args: argparse.Namespace) -> None:
                 vep_plugins=args.vep_plugins,
                 vep_overwrite=args.vep_overwrite,
                 vep_stats=args.vep_stats,
+                vep_stats_text=args.vep_stats_text,
+                vep_stats_html=args.vep_stats_html,
                 ref_fasta=args.ref_fasta,
                 species=args.species,
                 ncbi_build=args.ncbi_build,
