@@ -15,6 +15,7 @@ import gzip
 import logging
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -98,6 +99,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--vep-overwrite",
         action="store_true",
         help="Overwrite pre-existing VEP-annotated VCF",
+    )
+    p.add_argument(
+        "--vep-log-cmd",
+        action="store_true",
+        help="Log the VEP command in shell-style multi-line format (easier to copy/re-run).",
     )
     p.add_argument(
         "--vep-stats",
@@ -638,6 +644,23 @@ def hgvsp_short(hgvsp_long: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _format_cmd(cmd: list) -> str:
+    """Format a command list as a shell-style backslash-continuation string."""
+    if not cmd:
+        return ""
+    parts = [shlex.quote(cmd[0])]
+    i = 1
+    while i < len(cmd):
+        token = cmd[i]
+        if token.startswith("-") and i + 1 < len(cmd) and not cmd[i + 1].startswith("-"):
+            parts.append(f"{token} {shlex.quote(cmd[i + 1])}")
+            i += 2
+        else:
+            parts.append(token)
+            i += 1
+    return " \\\n    ".join(parts)
+
+
 def run_vep(input_vcf: str, vep_vcf: str, args: argparse.Namespace) -> None:
     """Build and execute the VEP command."""
     vep_bin = os.path.join(args.vep_path, "vep")
@@ -708,7 +731,10 @@ def run_vep(input_vcf: str, vep_vcf: str, args: argparse.Namespace) -> None:
     if getattr(args, "vep_overwrite", False):
         cmd += ["--force_overwrite"]
 
-    log.info("Running VEP: %s", " ".join(cmd))
+    if getattr(args, "vep_log_cmd", False):
+        log.info("Running VEP:\n  %s", _format_cmd(cmd))
+    else:
+        log.info("Running VEP: %s", " ".join(cmd))
     result = subprocess.run(cmd, capture_output=not args.verbose)
     if result.returncode != 0:
         stderr = result.stderr.decode() if result.stderr else ""

@@ -70,6 +70,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--vep-plugins", default="")
     p.add_argument("--vep-overwrite", action="store_true")
     p.add_argument(
+        "--vep-log-cmd",
+        action="store_true",
+        help="Log the VEP command in shell-style multi-line format (easier to copy/re-run).",
+    )
+    p.add_argument(
         "--vep-stats",
         nargs="?",
         const=True,
@@ -180,6 +185,7 @@ def maf2maf(args: argparse.Namespace) -> None:
                 vep_config=args.vep_config,
                 vep_plugins=args.vep_plugins,
                 vep_overwrite=args.vep_overwrite,
+                vep_log_cmd=args.vep_log_cmd,
                 vep_stats=args.vep_stats,
                 vep_stats_text=args.vep_stats_text,
                 vep_stats_html=args.vep_stats_html,
