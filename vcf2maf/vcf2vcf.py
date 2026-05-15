@@ -245,6 +245,7 @@ def vcf2vcf(args: argparse.Namespace) -> None:
     if not os.path.isfile(args.ref_fasta):
         sys.exit(f"ERROR: --ref-fasta not found: {args.ref_fasta}")
 
+    log.info("vcf2vcf: %s → %s", args.input_vcf, args.output_vcf)
     tmp_dir = tempfile.mkdtemp(prefix="vcf2vcf_")
 
     remap: Dict[str, str] = {}
@@ -253,6 +254,7 @@ def vcf2vcf(args: argparse.Namespace) -> None:
             sys.exit(f"ERROR: --remap-chain not found: {args.remap_chain}")
         log.info("Running liftOver coordinate remapping…")
         remap = remap_vcf(args.input_vcf, args.remap_chain, args.liftover_exec, tmp_dir)
+        log.info("liftOver remapped %d locus/loci", len(remap))
 
     # Determine tumor / normal column indices from header
     tum_col_idx = -1
@@ -305,6 +307,11 @@ def vcf2vcf(args: argparse.Namespace) -> None:
                     if i not in new_sample_order:
                         new_sample_order.append(i)
                 sample_order = new_sample_order
+                log.info(
+                    "VCF header parsed: tumor col=%s (idx %d), normal col=%s (idx %d)",
+                    args.vcf_tumor_id, tum_col_idx,
+                    args.vcf_normal_id, nrm_col_idx,
+                )
 
                 new_header_samples = [sample_cols[i] for i in sample_order]
                 out_fh.write(

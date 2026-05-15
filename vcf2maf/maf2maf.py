@@ -123,6 +123,7 @@ def maf2maf(args: argparse.Namespace) -> None:
     if not os.path.isfile(args.input_maf):
         sys.exit(f"ERROR: --input-maf not found: {args.input_maf}")
 
+    log.info("maf2maf: %s → %s", args.input_maf, args.output_maf)
     tmp_dir = tempfile.mkdtemp(prefix="maf2maf_")
     log.info("Temporary directory: %s", tmp_dir)
 
@@ -148,6 +149,7 @@ def maf2maf(args: argparse.Namespace) -> None:
 
         if not vcf_paths:
             sys.exit("ERROR: maf2vcf produced no VCF files")
+        log.info("Step 1 complete: %d per-TN VCF(s) produced", len(vcf_paths))
 
         # ------------------------------------------------------------------
         # Step 2: vcf2maf – annotate each VCF
@@ -199,12 +201,17 @@ def maf2maf(args: argparse.Namespace) -> None:
                 online=False,
                 verbose=args.verbose,
             )
+            log.info(
+                "Step 2 [%d/%d]: annotating %s (tumor=%s, normal=%s)",
+                len(maf_parts) + 1, len(vcf_paths), vcf_path, tumor_id, normal_id,
+            )
             v2m.vcf2maf(v2m_args)
             maf_parts.append(part_maf)
 
         # ------------------------------------------------------------------
         # Step 3: Merge per-TN MAFs → output MAF
         # ------------------------------------------------------------------
+        log.info("Step 3: merging %d partial MAF(s) → %s", len(maf_parts), args.output_maf)
         _merge_mafs(maf_parts, args.output_maf, args.retain_cols, args.input_maf)
         log.info("Final MAF written to %s", args.output_maf)
 

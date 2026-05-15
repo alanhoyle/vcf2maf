@@ -713,6 +713,7 @@ def run_vep(input_vcf: str, vep_vcf: str, args: argparse.Namespace) -> None:
     if result.returncode != 0:
         stderr = result.stderr.decode() if result.stderr else ""
         raise RuntimeError(f"VEP failed (exit {result.returncode}):\n{stderr}")
+    log.info("VEP annotation complete: %s", vep_vcf)
 
 
 # ---------------------------------------------------------------------------
@@ -726,6 +727,8 @@ def vcf2maf(args: argparse.Namespace) -> None:
     input_vcf = args.input_vcf
     output_maf = args.output_maf
 
+    log.info("vcf2maf: %s → %s", input_vcf, output_maf)
+
     # Basic validation
     if not os.path.isfile(input_vcf):
         sys.exit(f"ERROR: --input-vcf not found: {input_vcf}")
@@ -736,10 +739,13 @@ def vcf2maf(args: argparse.Namespace) -> None:
 
     # Load Ensembl → Entrez gene ID map (mirrors Perl $script_dir/data/… lookup)
     entrez_map = _load_entrez_map()
+    log.info("Loaded %d Ensembl→Entrez gene ID mappings", len(entrez_map))
 
     # Pre-fetch flanking reference bases for all variants (mirrors Perl pre-VEP step)
     samtools = getattr(args, "samtools", "samtools")
+    log.info("Fetching flanking reference bases from %s", args.ref_fasta)
     flanking_map = _fetch_all_flanking_bps(input_vcf, args.ref_fasta, samtools)
+    log.info("Fetched flanking bases for %d loci", len(flanking_map))
 
     # Load custom transcript list
     custom_enst: Dict[str, bool] = {}
@@ -773,6 +779,7 @@ def vcf2maf(args: argparse.Namespace) -> None:
         else:
             run_vep(input_vcf, vep_vcf, args)
     else:
+        log.info("--inhibit-vep set; parsing annotations directly from %s", input_vcf)
         vep_vcf = input_vcf  # parse annotations from the input itself
 
     # -----------------------------------------------------------------------
@@ -817,6 +824,13 @@ def vcf2maf(args: argparse.Namespace) -> None:
                 csq_fields = parse_csq_header(header_lines)
                 if not csq_fields:
                     ann_fields = parse_ann_header(header_lines)
+                log.info(
+                    "VCF header parsed: tumor col=%s (idx %d), normal col=%s (idx %d), "
+                    "%d CSQ fields",
+                    vcf_tumor_id, tum_col_idx,
+                    vcf_normal_id, nrm_col_idx,
+                    len(csq_fields) or len(ann_fields),
+                )
                 if args.retain_ann_all:
                     maf_col_set = set(MAF_COLUMNS)
                     seen_ann = set(retain_ann_keys)
@@ -1119,6 +1133,10 @@ def vcf2maf(args: argparse.Namespace) -> None:
             seen.add(c)
             final_cols.append(c)
 
+    log.info(
+        "Parsed %d variants from VCF; writing MAF with %d columns",
+        len(maf_rows), len(final_cols),
+    )
     with open(output_maf, "w") as maf_fh:
         maf_fh.write("#version 2.4\n")
         maf_fh.write("\t".join(final_cols) + "\n")

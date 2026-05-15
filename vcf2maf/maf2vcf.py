@@ -311,10 +311,12 @@ def maf2vcf(args: argparse.Namespace) -> None:
     if not os.path.isfile(args.ref_fasta):
         sys.exit(f"ERROR: --ref-fasta not found: {args.ref_fasta}")
 
+    log.info("maf2vcf: %s → %s", args.input_maf, args.output_dir)
     os.makedirs(args.output_dir, exist_ok=True)
 
     col_names, header_lineno = read_maf_header(args.input_maf)
     col_idx = {c.lower(): i for i, c in enumerate(col_names)}
+    log.info("MAF header found at line %d: %d columns", header_lineno, len(col_names))
 
     # Validate required columns
     for req in REQUIRED_MAF_COLS:
@@ -448,6 +450,12 @@ def maf2vcf(args: argparse.Namespace) -> None:
             )
 
             tn_variants[(tumor_id, normal_id)].append(v)
+
+    total_variants = sum(len(v) for v in tn_variants.values())
+    log.info(
+        "Collected %d variant(s) across %d TN pair(s)",
+        total_variants, len(tn_variants),
+    )
 
     # Write VCFs
     written_vcfs: List[str] = []
